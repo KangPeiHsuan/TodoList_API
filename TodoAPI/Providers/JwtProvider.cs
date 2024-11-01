@@ -1,4 +1,5 @@
-﻿using System.IdentityModel.Tokens.Jwt;
+﻿using System.Collections.Concurrent;
+using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Text;
 using Microsoft.IdentityModel.Tokens;
@@ -12,6 +13,9 @@ namespace TodoAPI.Providers
         private readonly string _jwtIssuer;
         private readonly string _jwtSignKey;
         private readonly int _jwtExpireSec;
+
+        // 使用 concurrent dictionary 儲存無效 token
+        private static readonly ConcurrentDictionary<string, bool> TokenBlacklist = new ConcurrentDictionary<string, bool>();
 
         public JwtProvider(IConfiguration configuration)
         {
@@ -74,6 +78,24 @@ namespace TodoAPI.Providers
             };
 
             return claims;
+        }
+
+        public void SignOut(string token)
+        {
+            // 將 Token 添加到黑名單
+            InvalidateToken(token);
+        }
+
+        private void InvalidateToken(string token)
+        {
+            // 將 Token 標記為無效
+            TokenBlacklist.TryAdd(token, true);
+        }
+
+        public bool IsTokenInvalid(string token)
+        {
+            // 檢查 Token 是否在黑名單中
+            return TokenBlacklist.ContainsKey(token);
         }
     }
 }
