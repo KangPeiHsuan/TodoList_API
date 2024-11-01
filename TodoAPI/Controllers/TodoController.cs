@@ -20,9 +20,9 @@ namespace TodoAPI.Controllers
         [HttpGet]
         public IActionResult GetTodos()
         {
-            List<Todo> todo = _todoContext.Todo.ToList();
+            List<Todo> todos = _todoContext.Todo.ToList();
 
-            var result = todo.Select(todo => new TodoDto
+            var result = todos.Select(todo => new TodoDto
             {
                 Id = todo.Id,
                 Content = todo.Content,
@@ -66,6 +66,7 @@ namespace TodoAPI.Controllers
                 // 返回 404
                 return NotFound();
             }
+
             todo.Content = contentDto.Content;
             _todoContext.SaveChanges();
 
