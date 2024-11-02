@@ -75,6 +75,8 @@ namespace TodoAPI.Providers
                 // 在 RFC 7519 規格中(Section#4)，總共定義了 7 個預設的 Claims，可以看需要哪些
                 new Claim(JwtRegisteredClaimNames.Sub, _userDto.Id.ToString()), // User.Identity.Id
                 new Claim(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString()), // JWT ID
+                
+                new Claim(ClaimTypes.NameIdentifier, _userDto.Id.ToString()), // 使用 ASP.NET 內的標準聲明
             };
 
             return claims;
@@ -92,10 +94,36 @@ namespace TodoAPI.Providers
             TokenBlacklist.TryAdd(token, true);
         }
 
+        // 返回 true 表示無效， false 表示有效
         public bool IsTokenInvalid(string token)
         {
             // 檢查 Token 是否在黑名單中
-            return TokenBlacklist.ContainsKey(token);
+            if (TokenBlacklist.ContainsKey(token))
+            {
+                return true;
+            }
+
+            var tokenHandler = new JwtSecurityTokenHandler();
+            try
+            {
+                // 驗證 Token 的有效性
+                tokenHandler.ValidateToken(token, new TokenValidationParameters
+                {
+                    ValidateIssuer = true,
+                    ValidateAudience = false, 
+                    ValidateLifetime = true, // 驗證過期時間
+                    ValidateIssuerSigningKey = true,
+                    IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_jwtSignKey)),
+                    ValidIssuer = _jwtIssuer
+                }, out SecurityToken validatedToken);
+
+                return false; 
+            }
+            catch (Exception)
+            {
+                return true; 
+            }
+
         }
     }
 }

@@ -11,8 +11,8 @@ namespace TodoAPI.Models
         public TodoContext() { }
 
         // 在資料庫內建立 Todo / User 資料表
-        public DbSet<Todo> Todo { get; set; }
-        public DbSet<User> User { get; set; }
+        public DbSet<Todo> Todos { get; set; }
+        public DbSet<User> Users { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {

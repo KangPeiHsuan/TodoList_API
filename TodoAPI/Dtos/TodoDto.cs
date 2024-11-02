@@ -1,4 +1,5 @@
-﻿
+﻿using TodoAPI.Models;
+
 namespace TodoAPI.Dtos
 {
     public class TodoDto

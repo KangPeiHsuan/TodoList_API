@@ -40,7 +40,7 @@ namespace TodoAPI.Controllers
                 return BadRequest(new { message = "請輸入您的電子信箱" });
             }
 
-            var user = _todoContext.User.SingleOrDefault(u => u.Email == loginDto.Email);
+            var user = _todoContext.Users.SingleOrDefault(u => u.Email == loginDto.Email);
             if (user == null)
             {
                 var newUser = new User { Email = loginDto.Email };
@@ -49,8 +49,10 @@ namespace TodoAPI.Controllers
 
                 _todoContext.Add(newUser);
                 _todoContext.SaveChanges();
-
-                var token = _jwtProvider.GenerateToken(loginDto);
+                
+                var createdUser = _todoContext.Users.SingleOrDefault(u => u.Email == loginDto.Email);
+                
+                var token = _jwtProvider.GenerateToken(new UserDto { Id = createdUser.Id, Email = createdUser.Email });
 
                 // 將 token 放入 response headers 內
                 Response.Headers.Add("Authorization", $"Bearer {token}");

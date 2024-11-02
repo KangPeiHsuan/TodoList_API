@@ -1,7 +1,9 @@
-﻿using Microsoft.AspNetCore.Authorization;
+﻿using System.Security.Claims;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using TodoAPI.Dtos;
 using TodoAPI.Models;
+using TodoAPI.Providers;
 
 namespace TodoAPI.Controllers
 {
@@ -12,10 +14,12 @@ namespace TodoAPI.Controllers
     public class TodosController : ControllerBase
     {
         private readonly TodoContext _todoContext;
+        private readonly JwtProvider _jwtprovider;
 
-        public TodosController(TodoContext todoContext)
+        public TodosController(TodoContext todoContext, JwtProvider jwtProvider)
         {
             _todoContext = todoContext;
+            _jwtprovider = jwtProvider;
         }
 
         // GET: todos
@@ -33,13 +37,19 @@ namespace TodoAPI.Controllers
         {
             if (string.IsNullOrEmpty(authorization))
             {
-                return BadRequest("未授權");
+                return Unauthorized("未授權");
             }
 
             // 處理 authorization 格式
             var token = authorization.StartsWith("Bearer ") ? authorization.Substring("Bearer ".Length).Trim() : authorization;
+            if (_jwtprovider.IsTokenInvalid(token))
+            {
+                return Unauthorized(new { message = "Token 已失效 / 無效" });
+            } 
 
-            List<Todo> todos = _todoContext.Todo.ToList();
+            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier); // 透過 JWT Token 的 claim 獲取當前用戶的 ID
+
+            List<Todo> todos = _todoContext.Todos.Where(u => u.UserId == userId ).ToList();
 
             var result = todos.Select(todo => new TodoDto
             {
@@ -63,23 +73,30 @@ namespace TodoAPI.Controllers
         [ProducesResponseType(StatusCodes.Status401Unauthorized)]
         public IActionResult CreateTodo([FromBody] ContentDto contentDto)
         {
+            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier); // 獲取當前用戶 ID
 
+            if (string.IsNullOrEmpty(userId))
+            {
+                return BadRequest(new { message = "未授權的用戶" });
+            }
+            // 創建新的 TODO 項目
             var todo = new Todo
             {
                 Content = contentDto.Content,
+                UserId =  userId // 將當前用戶 ID 設置為 TODO 的 UserId
             };
 
-            _todoContext.Todo.Add(todo);
+            _todoContext.Todos.Add(todo);
             _todoContext.SaveChanges();
 
-            var _created = new IdRequiredDto
+            var created = new IdRequiredDto
             {
                 Id = todo.Id,
                 Content = todo.Content,
             };
 
             // 返回 201，及新建立的 Todo Dto
-            return Created("", _created);
+            return Created("", created);
         }
 
         // PUT todos/{id}
@@ -97,7 +114,7 @@ namespace TodoAPI.Controllers
         public IActionResult UpdateTodo(Guid id, [FromBody] ContentDto contentDto)
         {
 
-            var todo = _todoContext.Todo.Find(id);
+            var todo = _todoContext.Todos.Find(id);
             if (todo == null)
             {
                 // 返回 404
@@ -107,13 +124,13 @@ namespace TodoAPI.Controllers
             todo.Content = contentDto.Content;
             _todoContext.SaveChanges();
 
-            var _updated = new IdRequiredDto
+            var updated = new IdRequiredDto
             {
                 Id = todo.Id,
                 Content = todo.Content
             };
 
-            return Ok(_updated);
+            return Ok(updated);
         }
 
         // DELETE todos/{id}
@@ -130,14 +147,14 @@ namespace TodoAPI.Controllers
         [ProducesResponseType(StatusCodes.Status404NotFound)]
         public IActionResult DeleteTodo(Guid id)
         {
-            var todo = _todoContext.Todo.Find(id);
+            var todo = _todoContext.Todos.Find(id);
             if (todo == null)
             {
                 // 返回 404 
                 return NotFound();
             }
 
-            _todoContext.Todo.Remove(todo);
+            _todoContext.Todos.Remove(todo);
             _todoContext.SaveChanges();
 
             return Ok(new { message = "已刪除" });
@@ -157,7 +174,7 @@ namespace TodoAPI.Controllers
         [ProducesResponseType(StatusCodes.Status404NotFound)]
         public IActionResult ToggleTodo(Guid id)
         {
-            var todo = _todoContext.Todo.Find(id);
+            var todo = _todoContext.Todos.Find(id);
             if (todo == null)
             {
                 // 返回 404 
@@ -171,7 +188,13 @@ namespace TodoAPI.Controllers
 
             _todoContext.SaveChanges();
 
-            return Ok(todo);
+            var updated = new IdRequiredDto
+            {
+                Id = todo.Id,
+                Content = todo.Content
+            };
+
+            return Ok(updated);
 
         }
     }
