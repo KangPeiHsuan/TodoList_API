@@ -56,8 +56,13 @@ namespace TodoAPI.Controllers
 
                 // 將 token 放入 response headers 內
                 Response.Headers.Add("Authorization", $"Bearer {token}");
-
-                return Ok(loginDto);
+                
+                return Ok(new
+                {
+                    message = "註冊成功",
+                    email = loginDto.Email,
+                    password = loginDto.Password
+                });
             }
             else
             {
@@ -66,12 +71,29 @@ namespace TodoAPI.Controllers
 
                 if (passwordVerificationResult == PasswordVerificationResult.Success)
                 {
-                    var token = _jwtProvider.GenerateToken(loginDto);
+                    var existingUserId = _todoContext.Users
+                        .Where(u => u.Email == loginDto.Email)
+                        .Select(u => u.Id)
+                        .FirstOrDefault();
+
+                    var _userdto = new UserDto
+                    {
+                        Id = existingUserId,
+                        Email = loginDto.Email,
+                        Password = loginDto.Password 
+                    };
+
+                    var token = _jwtProvider.GenerateToken(_userdto);
 
                     // 將 token 放入 response headers 內
                     Response.Headers.Add("Authorization", $"Bearer {token}");
 
-                    return Ok(loginDto);
+                    return Ok(new
+                    {
+                        message = "登入成功",
+                        email = loginDto.Email,
+                        password = loginDto.Password
+                    });
                 }
                 else
                 {
@@ -93,10 +115,11 @@ namespace TodoAPI.Controllers
 
             if (_jwtProvider.IsTokenInvalid(token))
             {
-                return BadRequest(new { message = "Token 已失效" });
+                return BadRequest(new { message = "您沒有登入喔" });
             }
 
             _jwtProvider.SignOut(token);
+            Response.Headers.Remove("Authorization");
             return Ok(new { message = "登出成功" });
         }
     }
