@@ -96,6 +96,11 @@ builder.Services.AddAuthentication(options =>
 // AddSingleton vs AddScoped 生命週期差異
 builder.Services.AddSingleton<JwtProvider>();
 
+// 註冊 TodoService / CurrentUserService
+builder.Services.AddHttpContextAccessor();
+builder.Services.AddScoped<ICurrentUserService, CurrentUserService>();
+builder.Services.AddScoped<ITodoService, TodoService>();
+
 var app = builder.Build();
 
 // Configure the HTTP request pipeline.

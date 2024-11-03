@@ -13,24 +13,23 @@ namespace TodoAPI.Controllers
     [Produces("application/json")]
     public class TodosController : ControllerBase
     {
-        private readonly TodoContext _todoContext;
-        private readonly JwtProvider _jwtprovider;
+        private readonly JwtProvider _jwtProvider;
+        private readonly ITodoService _todoService;
 
-        public TodosController(TodoContext todoContext, JwtProvider jwtProvider)
+        public TodosController(JwtProvider jwtProvider, ITodoService todoService)
         {
-            _todoContext = todoContext;
-            _jwtprovider = jwtProvider;
+            _jwtProvider = jwtProvider;
+            _todoService = todoService;
         }
 
-        private string? GetAuthFromHeader()
+        // 把 token 驗證抽出來
+        private bool ValidateToken()
         {
-            if (!Request.Headers.ContainsKey("Authorization"))
-            {
-                return null; // 如果未找到 Authorization 標頭，返回 null
-            }
-
             var auth = Request.Headers["Authorization"].ToString();
-            return auth;
+            if (string.IsNullOrEmpty(auth)) return false;
+
+            var token = auth.StartsWith("Bearer ") ? auth.Substring("Bearer ".Length).Trim() : auth;
+            return !string.IsNullOrEmpty(token) && !_jwtProvider.IsTokenInvalid(token);
         }
 
         // GET: todos
@@ -43,40 +42,22 @@ namespace TodoAPI.Controllers
         [HttpGet]
         [ProducesResponseType(StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status401Unauthorized)]
-        public IActionResult GetTodos() 
-        {   
-            var auth = GetAuthFromHeader(); // 獲取 token
-            if (string.IsNullOrEmpty(auth))
+        public IActionResult GetTodos()
+        {
+            if (!ValidateToken())
             {
-                return Unauthorized(new { message = "未授權" }); // 如果 auth 為 null 或空，返回未授權
-            }
-            var token = auth.StartsWith("Bearer ") ? auth.Substring("Bearer ".Length).Trim() : auth;
-
-            if (string.IsNullOrEmpty(token))
-            {
-                return Unauthorized(new { message = "未授權" });// 如果 token 為空，返回未授權
+                return Unauthorized(new { message = "未授權" });
             }
 
-            // 驗證 token 的有效性
-            if (_jwtprovider.IsTokenInvalid(token))
-            {
-                return Unauthorized(new { message = "Token 無效" });
-            }
-
-            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier); // 透過 JWT Token 的 claim 獲取當前用戶的 ID
-
-            List<Todo> todos = _todoContext.Todos.Where(u => u.UserId == userId ).ToList();
-
+            var todos = _todoService.GetAll();
             var result = todos.Select(todo => new TodoDto
             {
                 Id = todo.Id,
                 Content = todo.Content,
                 CompletedAt = todo.CompletedAt
-            }).ToList();
+            });
 
-            var response = new { todos = result };
-
-            return Ok(response);
+            return Ok(new { todos = result });
         }
 
         // POST todos
@@ -89,42 +70,26 @@ namespace TodoAPI.Controllers
         [HttpPost]
         [ProducesResponseType(StatusCodes.Status201Created)]
         [ProducesResponseType(StatusCodes.Status401Unauthorized)]
-        public IActionResult CreateTodo([FromBody] ContentDto contentDto) 
+        public IActionResult CreateTodo([FromBody] ContentDto contentDto)
         {
-            var auth = GetAuthFromHeader(); // 獲取 token
-
-            var token = auth.StartsWith("Bearer ") ? auth.Substring("Bearer ".Length).Trim() : auth;
-
-            if (string.IsNullOrEmpty(token))
+            if (!ValidateToken())
             {
-                return Unauthorized(new { message = "未授權" }); // 如果 token 為空，返回未授權
+                return Unauthorized(new { message = "未授權" });
             }
 
-            // 驗證 token 的有效性
-            if (_jwtprovider.IsTokenInvalid(token))
-            {
-                return Unauthorized(new { message = "Token 無效" });
-            }
-
-            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier); // 獲取當前用戶 ID
-
-            // 創建新的 TODO 項目
             var todo = new Todo
             {
-                Content = contentDto.Content,
-                UserId =  userId // 將當前用戶 ID 設置為 TODO 的 UserId
+                Content = contentDto.Content
             };
 
-            _todoContext.Todos.Add(todo);
-            _todoContext.SaveChanges();
+            var createdTodo = _todoService.Create(todo);
 
             var created = new IdRequiredDto
             {
-                Id = todo.Id,
-                Content = todo.Content,
+                Id = createdTodo.Id,
+                Content = createdTodo.Content
             };
 
-            // 返回 201，及新建立的 Todo Dto
             return Created("", created);
         }
 
@@ -142,43 +107,24 @@ namespace TodoAPI.Controllers
         [ProducesResponseType(StatusCodes.Status404NotFound)]
         public IActionResult UpdateTodo(Guid id, [FromBody] ContentDto contentDto)
         {
-            // 確認這筆 todoitem 是否屬於當前使用者 
-            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier); // 透過 JWT Token 的 claim 獲取當前用戶的 ID
-            var foundtodo = _todoContext.Todos.FirstOrDefault(t => t.Id == id && t.UserId == userId);
-            if (foundtodo == null)
+            if (!ValidateToken())
             {
                 return Unauthorized(new { message = "未授權" });
             }
 
-            var auth = GetAuthFromHeader(); // 獲取 token
-
-            var token = auth.StartsWith("Bearer ") ? auth.Substring("Bearer ".Length).Trim() : auth;
-
-            if (string.IsNullOrEmpty(token))
-            {
-                return Unauthorized(new { message = "未授權" }); // 如果 token 為空，返回未授權
-            }
-
-            // 驗證 token 的有效性
-            if (_jwtprovider.IsTokenInvalid(token))
-            {
-                return Unauthorized(new { message = "Token 無效" });
-            }
-
-            var todo = _todoContext.Todos.Find(id);
+            var todo = _todoService.GetById(id);
             if (todo == null)
             {
-                // 返回 404
                 return NotFound();
             }
 
             todo.Content = contentDto.Content;
-            _todoContext.SaveChanges();
+            var updatedTodo = _todoService.Update(todo);
 
             var updated = new IdRequiredDto
             {
-                Id = todo.Id,
-                Content = todo.Content
+                Id = updatedTodo.Id,
+                Content = updatedTodo.Content
             };
 
             return Ok(updated);
@@ -198,39 +144,18 @@ namespace TodoAPI.Controllers
         [ProducesResponseType(StatusCodes.Status404NotFound)]
         public IActionResult DeleteTodo(Guid id)
         {
-            // 確認這筆 todoitem 是否屬於當前使用者 
-            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier); // 透過 JWT Token 的 claim 獲取當前用戶的 ID
-            var foundtodo = _todoContext.Todos.FirstOrDefault(t => t.Id == id && t.UserId == userId);
-            if (foundtodo == null)
+            if (!ValidateToken())
             {
                 return Unauthorized(new { message = "未授權" });
             }
 
-            var auth = GetAuthFromHeader(); // 獲取 token
-
-            var token = auth.StartsWith("Bearer ") ? auth.Substring("Bearer ".Length).Trim() : auth;
-
-            if (string.IsNullOrEmpty(token))
-            {
-                return Unauthorized(new { message = "未授權" }); // 如果 token 為空，返回未授權
-            }
-
-            // 驗證 token 的有效性
-            if (_jwtprovider.IsTokenInvalid(token))
-            {
-                return Unauthorized(new { message = "Token 無效" });
-            }
-
-            var todo = _todoContext.Todos.Find(id);
+            var todo = _todoService.GetById(id);
             if (todo == null)
             {
-                // 返回 404 
                 return NotFound();
             }
 
-            _todoContext.Todos.Remove(todo);
-            _todoContext.SaveChanges();
-
+            _todoService.Delete(id);
             return Ok(new { message = "已刪除" });
         }
 
@@ -248,51 +173,26 @@ namespace TodoAPI.Controllers
         [ProducesResponseType(StatusCodes.Status404NotFound)]
         public IActionResult ToggleTodo(Guid id)
         {
-            // 確認這筆 todoitem 是否屬於當前使用者 
-            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier); // 透過 JWT Token 的 claim 獲取當前用戶的 ID
-            var foundtodo = _todoContext.Todos.FirstOrDefault(t => t.Id == id && t.UserId == userId);
-            if (foundtodo == null)
+            if (!ValidateToken())
             {
                 return Unauthorized(new { message = "未授權" });
             }
 
-            var auth = GetAuthFromHeader(); // 獲取 token
-
-            var token = auth.StartsWith("Bearer ") ? auth.Substring("Bearer ".Length).Trim() : auth;
-
-            if (string.IsNullOrEmpty(token))
-            {
-                return Unauthorized(new { message = "未授權" }); // 如果 token 為空，返回未授權
-            }
-
-            // 驗證 token 的有效性
-            if (_jwtprovider.IsTokenInvalid(token))
-            {
-                return Unauthorized(new { message = "Token 無效" });
-            }
-
-            var todo = _todoContext.Todos.Find(id);
+            var todo = _todoService.GetById(id);
             if (todo == null)
             {
-                // 返回 404 
                 return NotFound();
             }
 
-            if (todo.CompletedAt == null)
-            {
-                todo.CompletedAt = DateTime.UtcNow;
-            }
+            var updatedTodo = _todoService.Toggle(id);
 
-            _todoContext.SaveChanges();
-
-            var updated = new IdRequiredDto
+            var result = new IdRequiredDto
             {
-                Id = todo.Id,
-                Content = todo.Content
+                Id = updatedTodo.Id,
+                Content = updatedTodo.Content
             };
 
-            return Ok(updated);
-
+            return Ok(result);
         }
     }
 }

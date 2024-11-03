@@ -4,13 +4,13 @@
 #### 可使用路由：
 #### Users
 | 方法     | 路由 | 描述  |
-| --- | --- | --- |
+| :--- | :--- | :--- |
 | POST    | /users/sign_in | 使用者登入 |
 | DELETE  | /users/sign_out | 使用者登出 |
 
 #### Todos
 | 方法     | 路由 | 描述  |
-| --- | --- | --- |
+| :--- | :--- | :--- |
 | GET    | /todos | 取得 TODO 列表 |
 | POST    | /todos | 新增 TODO |
 | PUT  | /todos/{id} | 修改 TODO |

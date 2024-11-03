@@ -25,6 +25,7 @@
     <None Remove="Providers\" />
     <None Remove="Migrations\" />
     <None Remove="Filters\" />
+    <None Remove="Services\" />
   </ItemGroup>
   <ItemGroup>
     <Folder Include="Controllers\" />
@@ -33,5 +34,6 @@
     <Folder Include="Providers\" />
     <Folder Include="Migrations\" />
     <Folder Include="Filters\" />
+    <Folder Include="Services\" />
   </ItemGroup>
 </Project>
