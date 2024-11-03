@@ -9,8 +9,6 @@ using TodoAPI.Providers;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// Add services to the container.
-
 // 建立資料庫連線
 builder.Services.AddDbContext<TodoContext>(options =>
     options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
@@ -39,12 +37,15 @@ builder.Services.AddSwaggerGen(options =>
         else return "1";
     });
 
+    // 帶入標頭參數
+    options.OperationFilter<CustomHeaderParameter>();
+
     // 設定以使用 xml 註解檔案
     var xmlFilename = $"{Assembly.GetExecutingAssembly().GetName().Name}.xml";
     options.IncludeXmlComments(Path.Combine(AppContext.BaseDirectory, xmlFilename));
 
-    // 設定 JWT 限制 + 右上方 Authorize 按鈕
-    options.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme()
+    // 配置 Bearer Token 認證
+    options.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
     {
         Name = "Authorization",
         Type = SecuritySchemeType.ApiKey,
@@ -54,7 +55,7 @@ builder.Services.AddSwaggerGen(options =>
         Description = "請輸入您的 Token (包含 Bearer)",
     });
 
-    // 在調用 API 時會自動去 Bearer 做驗證
+    // 在調用 API 時會自動去抓 Bearer 做驗證
     options.AddSecurityRequirement(new OpenApiSecurityRequirement
     {
         {
@@ -101,7 +102,11 @@ var app = builder.Build();
 if (app.Environment.IsDevelopment())
 {
     app.UseSwagger();
-    app.UseSwaggerUI();
+    app.UseSwaggerUI( option =>
+    {
+        // 隱藏底部 schema 區塊
+        option.DefaultModelsExpandDepth(-1);
+    });
 }
 
 app.UseAuthentication(); // 認證，一定要放在 UseAuthorization 前
@@ -110,4 +115,3 @@ app.UseAuthorization();  // 授權
 app.MapControllers();
 
 app.Run();
-

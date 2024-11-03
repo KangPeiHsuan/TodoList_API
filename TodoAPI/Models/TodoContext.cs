@@ -20,7 +20,13 @@ namespace TodoAPI.Models
             {
                 entity.HasKey(e => e.Id); // 設置 Id 為主鍵
                 entity.Property(e => e.Content).IsRequired(); 
-                entity.Property(e => e.CompletedAt).IsRequired(false); 
+                entity.Property(e => e.CompletedAt).IsRequired(false);
+
+                // 外鍵關聯
+                entity.HasOne(e => e.User)
+                  .WithMany(u => u.Todos)
+                  .HasForeignKey(e => e.UserId)
+                  .OnDelete(DeleteBehavior.Cascade); // 當使用者被刪除時，對應的待辦事項也會被刪除
             });
 
             modelBuilder.Entity<User>(entity =>

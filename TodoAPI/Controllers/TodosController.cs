@@ -7,9 +7,9 @@ using TodoAPI.Providers;
 
 namespace TodoAPI.Controllers
 {
+    [Authorize]
     [ApiController]
     [Route("todos")]
-    [Authorize]
     [Produces("application/json")]
     public class TodosController : ControllerBase
     {
@@ -22,7 +22,7 @@ namespace TodoAPI.Controllers
             _jwtprovider = jwtProvider;
         }
 
-        private string? GetTokenFromHeader()
+        private string? GetAuthFromHeader()
         {
             if (!Request.Headers.ContainsKey("Authorization"))
             {
@@ -30,14 +30,13 @@ namespace TodoAPI.Controllers
             }
 
             var auth = Request.Headers["Authorization"].ToString();
-            return auth.StartsWith("Bearer ") ? auth.Substring("Bearer ".Length).Trim() : auth;
+            return auth;
         }
 
         // GET: todos
         /// <summary>
         /// 取得 TODO 列表
         /// </summary>
-        /// <param name="authorization">JWT Token</param>
         /// <returns></returns>
         /// <response code="200">自己的 TODO List</response>
         /// <response code="401">未授權</response>
@@ -45,8 +44,13 @@ namespace TodoAPI.Controllers
         [ProducesResponseType(StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status401Unauthorized)]
         public IActionResult GetTodos() 
-        {
-            var token = GetTokenFromHeader(); // 獲取 token
+        {   
+            var auth = GetAuthFromHeader(); // 獲取 token
+            if (string.IsNullOrEmpty(auth))
+            {
+                return Unauthorized(new { message = "未授權" }); // 如果 auth 為 null 或空，返回未授權
+            }
+            var token = auth.StartsWith("Bearer ") ? auth.Substring("Bearer ".Length).Trim() : auth;
 
             if (string.IsNullOrEmpty(token))
             {
@@ -70,7 +74,9 @@ namespace TodoAPI.Controllers
                 CompletedAt = todo.CompletedAt
             }).ToList();
 
-            return Ok(result);
+            var response = new { todos = result };
+
+            return Ok(response);
         }
 
         // POST todos
@@ -85,7 +91,9 @@ namespace TodoAPI.Controllers
         [ProducesResponseType(StatusCodes.Status401Unauthorized)]
         public IActionResult CreateTodo([FromBody] ContentDto contentDto) 
         {
-            var token = GetTokenFromHeader(); // 獲取 token
+            var auth = GetAuthFromHeader(); // 獲取 token
+
+            var token = auth.StartsWith("Bearer ") ? auth.Substring("Bearer ".Length).Trim() : auth;
 
             if (string.IsNullOrEmpty(token))
             {
@@ -142,7 +150,9 @@ namespace TodoAPI.Controllers
                 return Unauthorized(new { message = "未授權" });
             }
 
-            var token = GetTokenFromHeader(); // 獲取 token
+            var auth = GetAuthFromHeader(); // 獲取 token
+
+            var token = auth.StartsWith("Bearer ") ? auth.Substring("Bearer ".Length).Trim() : auth;
 
             if (string.IsNullOrEmpty(token))
             {
@@ -196,7 +206,9 @@ namespace TodoAPI.Controllers
                 return Unauthorized(new { message = "未授權" });
             }
 
-            var token = GetTokenFromHeader(); // 獲取 token
+            var auth = GetAuthFromHeader(); // 獲取 token
+
+            var token = auth.StartsWith("Bearer ") ? auth.Substring("Bearer ".Length).Trim() : auth;
 
             if (string.IsNullOrEmpty(token))
             {
@@ -244,7 +256,9 @@ namespace TodoAPI.Controllers
                 return Unauthorized(new { message = "未授權" });
             }
 
-            var token = GetTokenFromHeader(); // 獲取 token
+            var auth = GetAuthFromHeader(); // 獲取 token
+
+            var token = auth.StartsWith("Bearer ") ? auth.Substring("Bearer ".Length).Trim() : auth;
 
             if (string.IsNullOrEmpty(token))
             {

@@ -1,15 +1,15 @@
-﻿using Microsoft.AspNetCore.Mvc;
+﻿using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Identity;
+using Microsoft.AspNetCore.Mvc;
 using TodoAPI.Dtos;
 using TodoAPI.Models;
 using TodoAPI.Providers;
-using Microsoft.AspNetCore.Identity;
-using Microsoft.AspNetCore.Authorization;
 
 namespace TodoAPI.Controllers
 {
+    [Authorize]
     [ApiController]
     [Route("users")]
-    [Authorize]
     [Produces("application/json")]
     public class UsersController : ControllerBase
     {
@@ -53,15 +53,14 @@ namespace TodoAPI.Controllers
                 var createdUser = _todoContext.Users.SingleOrDefault(u => u.Email == loginDto.Email);
                 
                 var token = _jwtProvider.GenerateToken(new UserDto { Id = createdUser.Id, Email = createdUser.Email });
-
+                
                 // 將 token 放入 response headers 內
                 Response.Headers.Add("Authorization", $"Bearer {token}");
-                
+
                 return Ok(new
                 {
                     message = "註冊成功",
-                    email = loginDto.Email,
-                    password = loginDto.Password
+                    email = loginDto.Email
                 });
             }
             else
@@ -71,14 +70,11 @@ namespace TodoAPI.Controllers
 
                 if (passwordVerificationResult == PasswordVerificationResult.Success)
                 {
-                    var existingUserId = _todoContext.Users
-                        .Where(u => u.Email == loginDto.Email)
-                        .Select(u => u.Id)
-                        .FirstOrDefault();
+                    var existUser = _todoContext.Users.FirstOrDefault(u => u.Email == loginDto.Email);
 
                     var _userdto = new UserDto
                     {
-                        Id = existingUserId,
+                        Id = existUser.Id,
                         Email = loginDto.Email,
                         Password = loginDto.Password 
                     };
@@ -91,8 +87,7 @@ namespace TodoAPI.Controllers
                     return Ok(new
                     {
                         message = "登入成功",
-                        email = loginDto.Email,
-                        password = loginDto.Password
+                        email = loginDto.Email
                     });
                 }
                 else
