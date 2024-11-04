@@ -7,7 +7,7 @@ using TodoAPI.Providers;
 
 namespace TodoAPI.Controllers
 {
-    [Authorize]
+    //[Authorize]
     [ApiController]
     [Route("todos")]
     [Produces("application/json")]

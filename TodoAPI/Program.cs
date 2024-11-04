@@ -37,9 +37,6 @@ builder.Services.AddSwaggerGen(options =>
         else return "1";
     });
 
-    // 帶入標頭參數
-    options.OperationFilter<CustomHeaderParameter>();
-
     // 設定以使用 xml 註解檔案
     var xmlFilename = $"{Assembly.GetExecutingAssembly().GetName().Name}.xml";
     options.IncludeXmlComments(Path.Combine(AppContext.BaseDirectory, xmlFilename));
@@ -70,6 +67,9 @@ builder.Services.AddSwaggerGen(options =>
             new string[] {}
         }
     });
+
+    // 帶入標頭參數
+    options.OperationFilter<CustomHeaderParameter>();
 
 });
 
@@ -103,16 +103,19 @@ builder.Services.AddScoped<ITodoService, TodoService>();
 
 var app = builder.Build();
 
-// Configure the HTTP request pipeline.
-if (app.Environment.IsDevelopment())
+
+app.UseSwagger();
+app.UseSwaggerUI( option =>
 {
-    app.UseSwagger();
-    app.UseSwaggerUI( option =>
-    {
-        // 隱藏底部 schema 區塊
-        option.DefaultModelsExpandDepth(-1);
-    });
-}
+    option.SwaggerEndpoint("/swagger/v1/swagger.json", "My API V1");
+
+    // 設置 Swagger UI 的路由前綴，空字串表示根路徑
+    option.RoutePrefix = "api-docs"; 
+
+    // 隱藏底部 schema 區塊
+    option.DefaultModelsExpandDepth(-1);
+});
+
 
 app.UseAuthentication(); // 認證，一定要放在 UseAuthorization 前
 app.UseAuthorization();  // 授權
