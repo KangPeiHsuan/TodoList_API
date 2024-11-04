@@ -103,19 +103,15 @@ builder.Services.AddScoped<ITodoService, TodoService>();
 
 var app = builder.Build();
 
+app.UseHttpsRedirection();
+app.UseRouting();
 
 app.UseSwagger();
 app.UseSwaggerUI( option =>
 {
-    option.SwaggerEndpoint("/swagger/v1/swagger.json", "My API V1");
-
-    // 設置 Swagger UI 的路由前綴，空字串表示根路徑
-    option.RoutePrefix = "api-docs"; 
-
     // 隱藏底部 schema 區塊
     option.DefaultModelsExpandDepth(-1);
 });
-
 
 app.UseAuthentication(); // 認證，一定要放在 UseAuthorization 前
 app.UseAuthorization();  // 授權
