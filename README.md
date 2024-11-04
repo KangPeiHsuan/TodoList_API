@@ -60,7 +60,8 @@
 但一直無法順利帶入，一開始以為是因為 Controller 上方裝了 [Authorize] 屬性的關係才將授權擋掉，後來測試將[Authorize] 屬性移除，但發現即使進入方法邏輯內去取 Request.Headers["Authorization"] 的值仍為空，表示 API 內的參數欄位沒有將輸入的值順利帶入請求的 HEADERS 內。
 不過因為另外有使用 POSTMAN 做測試，當將 BEARER TOKEN 放進 HEADERS 的 AUTHORIZATION 欄位時，是可以成功驗證並返回資料，移除 BEARER TOKEN 時則會返回未授權。（如下圖所示）
 由於 POSTMAN 測試有成功的緣故，推測可能是 Swagger UI 介面按鈕按下執行後未能成功將值帶入 HEADERS。(**目前未能找到進入介面確認的方法，所以目前該參數欄位仍無法順利進行驗證功能**)
-<img width="1032" alt="截圖 2024-11-04 晚上11 19 52" src="https://github.com/user-attachments/assets/01d87eb9-4520-46e5-b433-0bfa81764273">
+<img width="1000" alt="截圖 2024-11-04 晚上11 19 36" src="https://github.com/user-attachments/assets/c8e7e164-3302-4230-ae8c-245c7bf01275">
+<img width="1000" alt="截圖 2024-11-04 晚上11 19 52" src="https://github.com/user-attachments/assets/01d87eb9-4520-46e5-b433-0bfa81764273">
 <img width="920" alt="截圖 2024-11-04 晚上11 20 37" src="https://github.com/user-attachments/assets/27b8ff64-b830-4757-9229-3227bea88e8a">
 
 ---
