@@ -69,7 +69,7 @@ builder.Services.AddSwaggerGen(options =>
     });
 
     // 帶入標頭參數
-    options.OperationFilter<CustomHeaderParameter>();
+    //options.OperationFilter<CustomHeaderParameter>();
 
 });
 
@@ -101,6 +101,7 @@ builder.Services.AddHttpContextAccessor();
 builder.Services.AddScoped<ICurrentUserService, CurrentUserService>();
 builder.Services.AddScoped<ITodoService, TodoService>();
 
+// 構建一個應用程式
 var app = builder.Build();
 
 app.UseHttpsRedirection();

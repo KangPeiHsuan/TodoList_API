@@ -186,10 +186,11 @@ namespace TodoAPI.Controllers
 
             var updatedTodo = _todoService.Toggle(id);
 
-            var result = new IdRequiredDto
+            var result = new TodoDto
             {
                 Id = updatedTodo.Id,
-                Content = updatedTodo.Content
+                Content = updatedTodo.Content,
+                CompletedAt = updatedTodo.CompletedAt
             };
 
             return Ok(result);
